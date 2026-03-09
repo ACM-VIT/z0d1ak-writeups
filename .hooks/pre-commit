@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# .hooks/pre-commit
+# Injects "## Author\n\n<git user>" into every newly-staged challenge README.md
+# A "challenge README" is any README.md that lives at depth >=3:
+#   <CTF>/<Category>/<Challenge>/README.md
+set -euo pipefail
+
+AUTHOR=$(git config --get user.name 2>/dev/null || echo "")
+
+if [[ -z "$AUTHOR" ]]; then
+    echo "pre-commit: WARNING: git user.name is not set, skipping author injection."
+    exit 0
+fi
+
+# Collect all newly-added (status A) README.md files from the index
+mapfile -t NEW_READMES < <(
+    git diff --cached --name-only --diff-filter=A \
+    | grep -E '^[^/]+/[^/]+/[^/]+/README\.md$' \
+    || true
+)
+
+if [[ ${#NEW_READMES[@]} -eq 0 ]]; then
+    exit 0
+fi
+
+for readme in "${NEW_READMES[@]}"; do
+    event_readme="${readme%%/*}/README.md"
+
+    # Skip the entire injection for this challenge only if the event README
+    # itself is being introduced in this commit
+    if git diff --cached --name-only --diff-filter=A -- "$event_readme" | grep -qxF "$event_readme"; then
+        echo "pre-commit: skipping author injection for $readme because $event_readme is newly added"
+        continue
+    fi
+    # Skip if the file no longer exists on disk (e.g. deleted after staging)
+    [[ -f "$readme" ]] || continue
+
+    # Skip if an Author section already exists
+    if grep -q "^## Author" "$readme"; then
+        continue
+    fi
+
+    printf '\n## Author\n\n%s\n' "$AUTHOR" >> "$readme"
+
+    # Re-stage the modified file so the author line is part of the commit
+    git add "$readme"
+
+    echo "pre-commit: added author '$AUTHOR' to $readme"
+done
+
+exit 0
