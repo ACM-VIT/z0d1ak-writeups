@@ -57,6 +57,32 @@ read_lines_into_array() {
     done
 }
 
+copy_array() {
+    local destination_name="$1"
+    local source_name="$2"
+    local count i item
+
+    count=$(array_length "$source_name")
+    eval "$destination_name=()"
+
+    for (( i=0; i<count; i++ )); do
+        item=$(array_get "$source_name" "$i")
+        eval "$destination_name+=(\"\$item\")"
+    done
+}
+
+append_array() {
+    local destination_name="$1"
+    local source_name="$2"
+    local count i item
+
+    count=$(array_length "$source_name")
+    for (( i=0; i<count; i++ )); do
+        item=$(array_get "$source_name" "$i")
+        eval "$destination_name+=(\"\$item\")"
+    done
+}
+
 # ─── input ───────────────────────────────────────────────────────────────────
 if [[ $# -lt 1 ]]; then
     red "Usage: $0 <ctftime_event_url>"
@@ -297,10 +323,14 @@ category_picker() {
     done
 }
 
-# ─── category folders (non-CTFd path only) ───────────────────────────────────
-if [[ "$USES_CTFD" != "y" && "$USES_CTFD" != "yes" ]]; then
+create_manual_categories() {
+    local reason="${1:-}"
 
-    # ── load defaults ──
+    if [[ -n "$reason" ]]; then
+        echo ""
+        yellow "$reason"
+    fi
+
     DEFAULT_CATEGORIES=()
     if [[ -f "$CATEGORIES_FILE" ]]; then
         while IFS= read -r line || [[ -n "$line" ]]; do
@@ -320,7 +350,7 @@ if [[ "$USES_CTFD" != "y" && "$USES_CTFD" != "yes" ]]; then
     PICKED_DEFAULTS=()
     if [[ ${#DEFAULT_CATEGORIES[@]} -gt 0 ]]; then
         category_picker DEFAULT_CATEGORIES
-        PICKED_DEFAULTS=("${CATEGORY_PICKER_RESULT[@]}")
+        copy_array PICKED_DEFAULTS CATEGORY_PICKER_RESULT
     else
         yellow "  No default categories found."
     fi
@@ -342,7 +372,9 @@ if [[ "$USES_CTFD" != "y" && "$USES_CTFD" != "yes" ]]; then
     fi
 
     # ── build final list ──
-    FINAL_CATEGORIES=("${PICKED_DEFAULTS[@]}" "${EXTRA_CATEGORIES[@]}")
+    FINAL_CATEGORIES=()
+    append_array FINAL_CATEGORIES PICKED_DEFAULTS
+    append_array FINAL_CATEGORIES EXTRA_CATEGORIES
 
     # ── make dirs ──
     if [[ ${#FINAL_CATEGORIES[@]} -gt 0 ]]; then
@@ -357,6 +389,11 @@ if [[ "$USES_CTFD" != "y" && "$USES_CTFD" != "yes" ]]; then
     else
         yellow "No categories selected — no folders created."
     fi
+}
+
+# ─── category folders (non-CTFd path only) ───────────────────────────────────
+if [[ "$USES_CTFD" != "y" && "$USES_CTFD" != "yes" ]]; then
+    create_manual_categories
 fi
 
 # ─── CTFd challenge fetch ─────────────────────────────────────────────────────
@@ -364,141 +401,158 @@ if [[ "$USES_CTFD" == "y" || "$USES_CTFD" == "yes" ]] && [[ -n "$TOKEN" ]]; then
     echo ""
     bold "Fetching challenge list from CTFd..."
 
-    CHALLENGES_JSON=$(curl -fsSL \
+    CHALLENGES_TMP=$(mktemp "${TMPDIR:-/tmp}/ctfd-challenges.XXXXXX")
+    CHALLENGES_HTTP_CODE=$(curl -sSL \
+        -o "$CHALLENGES_TMP" \
+        -w '%{http_code}' \
         -X GET "${BASE_URL}/api/v1/challenges" \
         -H "Authorization: Token ${TOKEN}" \
         -H "Content-Type: application/json") || {
+        rm -f "$CHALLENGES_TMP"
         red "Failed to fetch challenges from ${BASE_URL}/api/v1/challenges"
         exit 1
     }
+    CHALLENGES_JSON=$(cat "$CHALLENGES_TMP")
+    rm -f "$CHALLENGES_TMP"
 
-    SUCCESS=$(echo "$CHALLENGES_JSON" | jq -r '.success')
-    if [[ "$SUCCESS" != "true" ]]; then
-        red "CTFd API returned an error:"
-        echo "$CHALLENGES_JSON" | jq .
-        exit 1
+    if [[ "$CHALLENGES_HTTP_CODE" == "403" ]]; then
+        create_manual_categories "Challenges are not visible to participants at this time. Falling back to manual category setup."
+        CHALLENGES_JSON=""
+    elif [[ "$CHALLENGES_HTTP_CODE" != "200" ]]; then
+        create_manual_categories "Could not fetch the challenge list from CTFd (HTTP ${CHALLENGES_HTTP_CODE}). Falling back to manual category setup."
+        CHALLENGES_JSON=""
     fi
 
-    read_lines_into_array API_CATEGORIES < <(echo "$CHALLENGES_JSON" | jq -r '.data[].category' | sort -u)
-    green "Categories found: ${API_CATEGORIES[*]}"
-    for cat in "${API_CATEGORIES[@]}"; do
-        mkdir -p "$cat"
-        green "  Created category folder: $cat"
-    done
-
-    read_lines_into_array CHALLENGE_IDS < <(echo "$CHALLENGES_JSON" | jq -r '.data[].id')
-
-    for CID in "${CHALLENGE_IDS[@]}"; do
-        bold "  Fetching challenge #${CID}..."
-
-        CHAL_JSON=$(curl -fsSL \
-            -X GET "${BASE_URL}/api/v1/challenges/${CID}" \
-            -H "Authorization: Token ${TOKEN}" \
-            -H "Content-Type: application/json") || {
-            yellow "  Failed to fetch challenge #${CID}, skipping."
-            continue
-        }
-
-        C_SUCCESS=$(echo "$CHAL_JSON" | jq -r '.success')
-        if [[ "$C_SUCCESS" != "true" ]]; then
-            yellow "  Challenge #${CID} returned error, skipping."
-            continue
+    if [[ -n "$CHALLENGES_JSON" ]]; then
+        SUCCESS=$(echo "$CHALLENGES_JSON" | jq -r '.success')
+        if [[ "$SUCCESS" != "true" ]]; then
+            create_manual_categories "CTFd returned an API error while listing challenges. Falling back to manual category setup."
+            CHALLENGES_JSON=""
         fi
+    fi
 
-        C_NAME=$(echo "$CHAL_JSON"   | jq -r '.data.name')
-        C_CAT=$(echo "$CHAL_JSON"    | jq -r '.data.category')
-        C_VALUE=$(echo "$CHAL_JSON"  | jq -r '.data.value')
-        C_DESC=$(echo "$CHAL_JSON"   | jq -r '.data.description')
-        C_SOLVES=$(echo "$CHAL_JSON" | jq -r '.data.solves')
-        C_CONN=$(echo "$CHAL_JSON"   | jq -r '.data.connection_info')
-        C_SOLVED=$(echo "$CHAL_JSON" | jq -r '.data.solved_by_me')
-
-        if [[ "$C_SOLVED" != "true" ]]; then
-            yellow "  Challenge #${CID} ($C_NAME) not solved by team, skipping."
-            continue
-        fi
-
-        read_lines_into_array C_FILES < <(echo "$CHAL_JSON" | jq -r '.data.files[]? // empty')
-        read_lines_into_array C_TAGS  < <(echo "$CHAL_JSON" | jq -r '.data.tags[]? // empty')
-
-        CHAL_PATH="${C_CAT}/${C_NAME}"
-        mkdir -p "$CHAL_PATH"
-
-        CHAL_README="${CHAL_PATH}/README.md"
-        {
-            echo "# $C_NAME"
-            echo ""
-            echo "| Field      | Value |"
-            echo "|------------|-------|"
-            echo "| Category   | $C_CAT |"
-            echo "| Points     | $C_VALUE |"
-            echo "| Solves     | $C_SOLVES |"
-            if [[ "${#C_TAGS[@]}" -gt 0 && -n "${C_TAGS[0]}" ]]; then
-                TAGS_STR=$(IFS=', '; echo "${C_TAGS[*]}")
-                echo "| Tags       | $TAGS_STR |"
-            fi
-            if [[ "$C_CONN" != "null" && -n "$C_CONN" ]]; then
-                echo "| Connection | $C_CONN |"
-            fi
-            echo ""
-            echo "## Description"
-            echo ""
-            echo "$C_DESC"
-            echo ""
-            if [[ "${#C_FILES[@]}" -gt 0 && -n "${C_FILES[0]}" ]]; then
-                echo "## Files"
-                echo ""
-                for f in "${C_FILES[@]}"; do
-                    FILE_NAME=$(basename "$(echo "$f" | cut -d'?' -f1)")
-                    echo "- [$FILE_NAME](./$FILE_NAME)"
-                done
-                echo ""
-            fi
-            echo "## Writeup"
-            echo ""
-            echo "### Flag"
-            echo ""
-            echo "\`\`\`"
-            echo ""
-            echo "\`\`\`"
-            echo ""
-            echo "### Executive Summary"
-            echo ""
-            echo ""
-            echo "### Vulnerability Analysis"
-            echo ""
-            echo ""
-            echo "### Exploit Strategy"
-            echo ""
-            echo ""
-            echo "### Implementation"
-            echo ""
-            echo ""
-            echo "### Execution & Results"
-            echo ""
-            echo ""
-        } > "$CHAL_README"
-
-        green "    Wrote $CHAL_README"
-
-        for F in "${C_FILES[@]}"; do
-            [[ -z "$F" ]] && continue
-            F_NAME=$(basename "$(echo "$F" | cut -d'?' -f1)")
-            F_URL="${BASE_URL}${F}"
-            bold "    Downloading $F_NAME..."
-            curl -fsSL \
-                -H "Authorization: Token ${TOKEN}" \
-                "$F_URL" \
-                --output "${CHAL_PATH}/${F_NAME}" \
-                && green "    Saved ${CHAL_PATH}/${F_NAME}" \
-                || yellow "    Failed to download $F_NAME"
+    if [[ -n "$CHALLENGES_JSON" ]]; then
+        read_lines_into_array API_CATEGORIES < <(echo "$CHALLENGES_JSON" | jq -r '.data[].category' | sort -u)
+        green "Categories found: ${API_CATEGORIES[*]}"
+        for cat in "${API_CATEGORIES[@]}"; do
+            mkdir -p "$cat"
+            green "  Created category folder: $cat"
         done
-    done
 
-    green "All challenges processed."
+        read_lines_into_array CHALLENGE_IDS < <(echo "$CHALLENGES_JSON" | jq -r '.data[].id')
+
+        for CID in "${CHALLENGE_IDS[@]}"; do
+            bold "  Fetching challenge #${CID}..."
+
+            CHAL_JSON=$(curl -fsSL \
+                -X GET "${BASE_URL}/api/v1/challenges/${CID}" \
+                -H "Authorization: Token ${TOKEN}" \
+                -H "Content-Type: application/json") || {
+                yellow "  Failed to fetch challenge #${CID}, skipping."
+                continue
+            }
+
+            C_SUCCESS=$(echo "$CHAL_JSON" | jq -r '.success')
+            if [[ "$C_SUCCESS" != "true" ]]; then
+                yellow "  Challenge #${CID} returned error, skipping."
+                continue
+            fi
+
+            C_NAME=$(echo "$CHAL_JSON"   | jq -r '.data.name')
+            C_CAT=$(echo "$CHAL_JSON"    | jq -r '.data.category')
+            C_VALUE=$(echo "$CHAL_JSON"  | jq -r '.data.value')
+            C_DESC=$(echo "$CHAL_JSON"   | jq -r '.data.description')
+            C_SOLVES=$(echo "$CHAL_JSON" | jq -r '.data.solves')
+            C_CONN=$(echo "$CHAL_JSON"   | jq -r '.data.connection_info')
+            C_SOLVED=$(echo "$CHAL_JSON" | jq -r '.data.solved_by_me')
+
+            if [[ "$C_SOLVED" != "true" ]]; then
+                yellow "  Challenge #${CID} ($C_NAME) not solved by team, skipping."
+                continue
+            fi
+
+            read_lines_into_array C_FILES < <(echo "$CHAL_JSON" | jq -r '.data.files[]? // empty')
+            read_lines_into_array C_TAGS  < <(echo "$CHAL_JSON" | jq -r '.data.tags[]? // empty')
+
+            CHAL_PATH="${C_CAT}/${C_NAME}"
+            mkdir -p "$CHAL_PATH"
+
+            CHAL_README="${CHAL_PATH}/README.md"
+            {
+                echo "# $C_NAME"
+                echo ""
+                echo "| Field      | Value |"
+                echo "|------------|-------|"
+                echo "| Category   | $C_CAT |"
+                echo "| Points     | $C_VALUE |"
+                echo "| Solves     | $C_SOLVES |"
+                if [[ "${#C_TAGS[@]}" -gt 0 && -n "${C_TAGS[0]}" ]]; then
+                    TAGS_STR=$(IFS=', '; echo "${C_TAGS[*]}")
+                    echo "| Tags       | $TAGS_STR |"
+                fi
+                if [[ "$C_CONN" != "null" && -n "$C_CONN" ]]; then
+                    echo "| Connection | $C_CONN |"
+                fi
+                echo ""
+                echo "## Description"
+                echo ""
+                echo "$C_DESC"
+                echo ""
+                if [[ "${#C_FILES[@]}" -gt 0 && -n "${C_FILES[0]}" ]]; then
+                    echo "## Files"
+                    echo ""
+                    for f in "${C_FILES[@]}"; do
+                        FILE_NAME=$(basename "$(echo "$f" | cut -d'?' -f1)")
+                        echo "- [$FILE_NAME](./$FILE_NAME)"
+                    done
+                    echo ""
+                fi
+                echo "## Writeup"
+                echo ""
+                echo "### Flag"
+                echo ""
+                echo "\`\`\`"
+                echo ""
+                echo "\`\`\`"
+                echo ""
+                echo "### Executive Summary"
+                echo ""
+                echo ""
+                echo "### Vulnerability Analysis"
+                echo ""
+                echo ""
+                echo "### Exploit Strategy"
+                echo ""
+                echo ""
+                echo "### Implementation"
+                echo ""
+                echo ""
+                echo "### Execution & Results"
+                echo ""
+                echo ""
+            } > "$CHAL_README"
+
+            green "    Wrote $CHAL_README"
+
+            for F in "${C_FILES[@]}"; do
+                [[ -z "$F" ]] && continue
+                F_NAME=$(basename "$(echo "$F" | cut -d'?' -f1)")
+                F_URL="${BASE_URL}${F}"
+                bold "    Downloading $F_NAME..."
+                curl -fsSL \
+                    -H "Authorization: Token ${TOKEN}" \
+                    "$F_URL" \
+                    --output "${CHAL_PATH}/${F_NAME}" \
+                    && green "    Saved ${CHAL_PATH}/${F_NAME}" \
+                    || yellow "    Failed to download $F_NAME"
+            done
+        done
+
+        green "All challenges processed."
+    fi
 else
     if [[ "$USES_CTFD" == "y" || "$USES_CTFD" == "yes" ]]; then
-        yellow "No token provided — skipping challenge fetch."
+        create_manual_categories "No player token provided. Falling back to manual category setup."
     fi
 fi
 
