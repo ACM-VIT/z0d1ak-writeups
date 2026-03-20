@@ -30,6 +30,33 @@ require curl jq
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CATEGORIES_FILE="${SCRIPT_DIR}/categories.txt"
 
+# ─── bash 3/macOS helpers ─────────────────────────────────────────────────────
+lowercase() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+array_length() {
+    local array_name="$1"
+    eval "printf '%s' \"\${#$array_name[@]}\""
+}
+
+array_get() {
+    local array_name="$1"
+    local index="$2"
+    eval "printf '%s' \"\${$array_name[$index]}\""
+}
+
+read_lines_into_array() {
+    local array_name="$1"
+    local line
+
+    eval "$array_name=()"
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        eval "$array_name+=(\"\$line\")"
+    done
+}
+
 # ─── input ───────────────────────────────────────────────────────────────────
 if [[ $# -lt 1 ]]; then
     red "Usage: $0 <ctftime_event_url>"
@@ -67,7 +94,7 @@ ONSITE=$(echo "$EVENT_JSON"       | jq -r '.onsite')
 LIVE_FEED=$(echo "$EVENT_JSON"    | jq -r '.live_feed')
 
 DISCORD_LINK=$(echo "$EVENT_JSON" | jq -r '[.description, .prizes] | join(" ")' \
-    | grep -oP 'https://discord\.gg/\S+' | head -1 || true)
+    | grep -Eo 'https://discord\.gg/[^[:space:]]+' | head -1 || true)
 
 echo ""
 boldcyan "══════════════════════════════════════════════"
@@ -95,7 +122,7 @@ echo ""
 bold "Is this CTF using CTFd? (check ${CTF_URL}settings)"
 printf "Uses CTFd? [y/N]: "
 read -r USES_CTFD
-USES_CTFD="${USES_CTFD,,}"
+USES_CTFD="$(lowercase "$USES_CTFD")"
 
 TOKEN=""
 BASE_URL=""
@@ -140,16 +167,16 @@ README="README.md"
 green "Wrote $README"
 
 # ─── interactive category picker ─────────────────────────────────────────────
-# Usage: category_picker <nameref_result_array> <default_categories_array_nameref>
+# Usage: category_picker <source_array_name>
 # Draws a checkbox list; Space toggles, A selects all, N deselects all, Enter confirms.
 category_picker() {
-    # $1 = name of result array, $2 = name of source array
-    local -n _result="$1"
-    local -n _source="$2"
-    local count=${#_source[@]}
+    local source_name="$1"
+    local count i item
+
+    count=$(array_length "$source_name")
 
     if [[ $count -eq 0 ]]; then
-        _result=()
+        CATEGORY_PICKER_RESULT=()
         return
     fi
 
@@ -197,20 +224,19 @@ category_picker() {
         printf '\033[2m  ↑/↓ move  Space toggle  a all  n none  Enter confirm\033[0m\n\n'
 
         for (( i=0; i<count; i++ )); do
+            item=$(array_get "$source_name" "$i")
             local prefix="  "
             [[ $i -eq $cursor ]] && prefix="> "
             local box="[ ]"
             [[ "${selected[$i]}" == "1" ]] && box="[✓]"
 
             if [[ $i -eq $cursor ]]; then
-                printf '\033[1;36m%s %s  %s\033[0m\n' "$prefix" "$box" "${_source[$i]}"
+                printf '\033[1;36m%s %s  %s\033[0m\n' "$prefix" "$box" "$item"
             else
-                printf '%s %s  %s\n' "$prefix" "$box" "${_source[$i]}"
+                printf '%s %s  %s\n' "$prefix" "$box" "$item"
             fi
         done
     }
-
-    local i
 
     _draw_picker
 
@@ -262,9 +288,12 @@ category_picker() {
     printf '\n'
 
     # collect results
-    _result=()
+    CATEGORY_PICKER_RESULT=()
     for (( i=0; i<count; i++ )); do
-        [[ "${selected[$i]}" == "1" ]] && _result+=("${_source[$i]}")
+        if [[ "${selected[$i]}" == "1" ]]; then
+            item=$(array_get "$source_name" "$i")
+            CATEGORY_PICKER_RESULT+=("$item")
+        fi
     done
 }
 
@@ -290,7 +319,8 @@ if [[ "$USES_CTFD" != "y" && "$USES_CTFD" != "yes" ]]; then
 
     PICKED_DEFAULTS=()
     if [[ ${#DEFAULT_CATEGORIES[@]} -gt 0 ]]; then
-        category_picker PICKED_DEFAULTS DEFAULT_CATEGORIES
+        category_picker DEFAULT_CATEGORIES
+        PICKED_DEFAULTS=("${CATEGORY_PICKER_RESULT[@]}")
     else
         yellow "  No default categories found."
     fi
@@ -331,7 +361,8 @@ fi
 
 # ─── CTFd challenge fetch ─────────────────────────────────────────────────────
 if [[ "$USES_CTFD" == "y" || "$USES_CTFD" == "yes" ]] && [[ -n "$TOKEN" ]]; then
-    bold "\nFetching challenge list from CTFd..."
+    echo ""
+    bold "Fetching challenge list from CTFd..."
 
     CHALLENGES_JSON=$(curl -fsSL \
         -X GET "${BASE_URL}/api/v1/challenges" \
@@ -348,14 +379,14 @@ if [[ "$USES_CTFD" == "y" || "$USES_CTFD" == "yes" ]] && [[ -n "$TOKEN" ]]; then
         exit 1
     fi
 
-    mapfile -t API_CATEGORIES < <(echo "$CHALLENGES_JSON" | jq -r '.data[].category' | sort -u)
+    read_lines_into_array API_CATEGORIES < <(echo "$CHALLENGES_JSON" | jq -r '.data[].category' | sort -u)
     green "Categories found: ${API_CATEGORIES[*]}"
     for cat in "${API_CATEGORIES[@]}"; do
         mkdir -p "$cat"
         green "  Created category folder: $cat"
     done
 
-    mapfile -t CHALLENGE_IDS < <(echo "$CHALLENGES_JSON" | jq -r '.data[].id')
+    read_lines_into_array CHALLENGE_IDS < <(echo "$CHALLENGES_JSON" | jq -r '.data[].id')
 
     for CID in "${CHALLENGE_IDS[@]}"; do
         bold "  Fetching challenge #${CID}..."
@@ -387,8 +418,8 @@ if [[ "$USES_CTFD" == "y" || "$USES_CTFD" == "yes" ]] && [[ -n "$TOKEN" ]]; then
             continue
         fi
 
-        mapfile -t C_FILES < <(echo "$CHAL_JSON" | jq -r '.data.files[]? // empty')
-        mapfile -t C_TAGS  < <(echo "$CHAL_JSON" | jq -r '.data.tags[]? // empty')
+        read_lines_into_array C_FILES < <(echo "$CHAL_JSON" | jq -r '.data.files[]? // empty')
+        read_lines_into_array C_TAGS  < <(echo "$CHAL_JSON" | jq -r '.data.tags[]? // empty')
 
         CHAL_PATH="${C_CAT}/${C_NAME}"
         mkdir -p "$CHAL_PATH"
