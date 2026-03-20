@@ -1,0 +1,45 @@
+# SU_谁是小偷
+
+| Field         | Value |
+|---------------|-------|
+| Category      | AI |
+| Current Score | 277 |
+| Solves        | 53 |
+| Solved        | yes |
+| Awarded Score | 273 |
+| Solved Rank   | 47 |
+| Online        | yes |
+
+## Description
+
+小S发现自己的模型在上午被偷了很生气，他将自己强化后的模型重新部署起来了，并且散布了不少信息，其中信息甚至有相互冲突，作为一个神偷这可难不倒你
+
+小U悄咪咪地和你说小S保留了线性层与一层卷积层不变
+靶机地址为：http://1.95.113.59:10002
+
+## Files
+
+- [attachment.zip](./attachment.zip) (md5: 1b9049c17fa220918fae69fbaaf8aa76)
+
+## Writeup
+
+### Flag
+
+```
+
+```
+
+### Executive Summary
+
+
+### Vulnerability Analysis
+
+
+### Exploit Strategy
+
+
+### Implementation
+
+
+### Execution & Results
+
