@@ -433,13 +433,21 @@ if [[ "$USES_CTFD" == "y" || "$USES_CTFD" == "yes" ]] && [[ -n "$TOKEN" ]]; then
 
     if [[ -n "$CHALLENGES_JSON" ]]; then
         read_lines_into_array API_CATEGORIES < <(echo "$CHALLENGES_JSON" | jq -r '.data[].category' | sort -u)
-        green "Categories found: ${API_CATEGORIES[*]}"
-        for cat in "${API_CATEGORIES[@]}"; do
-            mkdir -p "$cat"
-            green "  Created category folder: $cat"
-        done
+        if [[ ${#API_CATEGORIES[@]} -gt 0 ]]; then
+            green "Categories found: ${API_CATEGORIES[*]}"
+            for cat in "${API_CATEGORIES[@]}"; do
+                mkdir -p "$cat"
+                green "  Created category folder: $cat"
+            done
+        else
+            yellow "No categories returned by CTFd."
+        fi
 
         read_lines_into_array CHALLENGE_IDS < <(echo "$CHALLENGES_JSON" | jq -r '.data[].id')
+
+        if [[ ${#CHALLENGE_IDS[@]} -eq 0 ]]; then
+            yellow "No challenges returned by CTFd."
+        fi
 
         for CID in "${CHALLENGE_IDS[@]}"; do
             bold "  Fetching challenge #${CID}..."
@@ -534,18 +542,20 @@ if [[ "$USES_CTFD" == "y" || "$USES_CTFD" == "yes" ]] && [[ -n "$TOKEN" ]]; then
 
             green "    Wrote $CHAL_README"
 
-            for F in "${C_FILES[@]}"; do
-                [[ -z "$F" ]] && continue
-                F_NAME=$(basename "$(echo "$F" | cut -d'?' -f1)")
-                F_URL="${BASE_URL}${F}"
-                bold "    Downloading $F_NAME..."
-                curl -fsSL \
-                    -H "Authorization: Token ${TOKEN}" \
-                    "$F_URL" \
-                    --output "${CHAL_PATH}/${F_NAME}" \
-                    && green "    Saved ${CHAL_PATH}/${F_NAME}" \
-                    || yellow "    Failed to download $F_NAME"
-            done
+            if [[ "${#C_FILES[@]}" -gt 0 && -n "${C_FILES[0]}" ]]; then
+                for F in "${C_FILES[@]}"; do
+                    [[ -z "$F" ]] && continue
+                    F_NAME=$(basename "$(echo "$F" | cut -d'?' -f1)")
+                    F_URL="${BASE_URL}${F}"
+                    bold "    Downloading $F_NAME..."
+                    curl -fsSL \
+                        -H "Authorization: Token ${TOKEN}" \
+                        "$F_URL" \
+                        --output "${CHAL_PATH}/${F_NAME}" \
+                        && green "    Saved ${CHAL_PATH}/${F_NAME}" \
+                        || yellow "    Failed to download $F_NAME"
+                done
+            fi
         done
 
         green "All challenges processed."
