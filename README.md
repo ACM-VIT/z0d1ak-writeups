@@ -44,11 +44,12 @@ Event Name/
 
 ## `add_comp.sh`
 
-Use `add_comp.sh` to bootstrap a new competition from a CTFtime event URL.
+Use `add_comp.sh` to bootstrap a new competition from a CTFtime event URL. The flow is interactive and uses a bundled prompt-driven CLI UI for event review, category selection, setup summary, and confirmation.
 
 ### Basic usage
 
-```/dev/null/example.sh#L1-1
+```/dev/null/example.sh#L1-2
+./add_comp.sh
 ./add_comp.sh <ctftime_event_url>
 ```
 
@@ -58,24 +59,28 @@ Example:
 ./add_comp.sh https://ctftime.org/event/3171/
 ```
 
+`add_comp.sh` now runs the bundled CLI entrypoint, so contributors only need `node` 18+ available. A local `pnpm install` is only needed if you want to modify or rebuild the CLI itself.
+
 ### What it does
 
 `add_comp.sh` will:
 
 1. fetch event metadata from the CTFtime API
-2. create an event directory named after the event title
-3. generate an event-level `README.md`
-4. ask whether the event uses CTFd
-5. do one of the following:
+2. show an event summary before continuing
+3. ask whether the event uses CTFd
+4. do one of the following:
    - **non-CTFd flow:** let you select default categories from `categories.txt` and optionally add extra categories
-   - **CTFd flow:** optionally use a player token to fetch solved challenges, create challenge folders, generate challenge `README.md` files, and download challenge files
+   - **CTFd flow:** optionally use a player token to fetch solved challenges, create challenge folders, generate challenge `README.md` files, and download challenge files; if CTFd leaves `category` blank, the script falls back to challenge tags
+5. show a setup summary before writing anything to disk
+6. create an event directory named after the event title
+7. generate an event-level `README.md`, plus either manual category folders or solved CTFd challenge folders
 
 ### Summary of options
 
 When you run the script, you will be prompted for:
 
 - **CTFtime event URL**  
-  Required. Used to fetch the event metadata.
+  Required, but you can either pass it on the command line or enter it interactively.
 
 - **Uses CTFd?**  
   Choose whether the event runs on CTFd.
@@ -87,7 +92,7 @@ When you run the script, you will be prompted for:
   Optional. If provided, the script can fetch solved challenges from the CTFd API.
 
 - **Default categories selection**  
-  For non-CTFd events, you can interactively choose categories from `categories.txt`.
+  For non-CTFd events, you can interactively choose categories from `categories.txt`. All defaults are preselected.
 
 - **Extra categories**  
   For non-CTFd events, you can add additional comma-separated category names.
