@@ -1,0 +1,9 @@
+Relevant lines recovered from the memory image via the Linux kernel log:
+
+check_service: loading out-of-tree module taints kernel.
+Reading from validation
+Error: Invalid key 51782b4b765251314e32525236364978534d35566a6b72474b67303946483266, indices 9 21 31 incorrect
+Validation failed
+Module unloaded
+Reading from validation2
+Error: Invalid key 58782b4b765251314e51525235364978534d35566a6a72524b673039466c3265, indices 0 12 23 29 incorrect

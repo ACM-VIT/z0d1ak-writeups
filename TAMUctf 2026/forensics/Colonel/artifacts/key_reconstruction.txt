@@ -1,0 +1,31 @@
+Candidate 1: raw log value
+51782b4b765251314e32525236364978534d35566a6b72474b67303946483266
+
+Candidate 1: ASCII
+Qx+KvRQ1N2RR66IxSM5VjkrGKg09FH2f
+
+Candidate 1: bad indices
+9 21 31
+
+Candidate 2: raw log value
+58782b4b765251314e51525235364978534d35566a6a72524b673039466c3265
+
+Candidate 2: ASCII
+Xx+KvRQ1NQRR56IxSM5VjjrRKg09Fl2e
+
+Candidate 2: bad indices
+0 12 23 29
+
+Merge rule:
+- trust candidate 2 at indices 9, 21, 31
+- trust candidate 1 at indices 0, 12, 23, 29
+- all remaining indices already match
+
+Recovered AES-256 key:
+Qx+KvRQ1NQRR66IxSM5VjjrGKg09FH2e
+
+IV:
+1234567890123456
+
+Padding note:
+The ciphertext decrypted correctly only with zero padding handling (`-nopad` in OpenSSL).
