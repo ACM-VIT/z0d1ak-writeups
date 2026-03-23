@@ -1,0 +1,4 @@
+__BEGIN__
+gigem{flamepyromancer_didnt_change_the_default_flag}
+__END__
+
