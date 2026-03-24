@@ -12,7 +12,7 @@
 
 ## Files
 
-- random-password.tar.gz
+- [random-password.tar.gz](./random-password.tar.gz)
 
 ## Writeup
 
