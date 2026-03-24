@@ -1,102 +1,242 @@
-# Abnormal Ellipse
+# Quick Response
 
 | Field      | Value |
 |------------|-------|
-| Category   | crypto |
+| Category   | misc |
 | Points     | 50 |
-| Solves     | 395 |
+| Solves     | 345 |
 
 ## Description
 
-<p>Author: <code>Marfung37</code></p><p>Some reason people are using these weird ellipses to do their encryption. But aren't quadratic curves completely broken. Anyways, I caught the data that was being sent along with how they are doing the encryption.</p>
+<p>Author: <code>faefeyfa</code></p><p>If you're bored, check this one out!</p>
 
 ## Files
 
-- [abnormal-ellipse.tar.gz](./abnormal-ellipse.tar.gz)
+- [quick-response.tar.gz](./quick-response.tar.gz)
 
 ## Writeup
 
 ### Flag
 
 ```text
-gigem{an0ma1ou5_curv3_ss5a_d41z8GaFF3kZ8}
+gigem{d1d_y0u_n0t1c3_th3_t1m1n9_b175}
 ```
 
 ### Executive Summary
 
-This challenge uses ECDH on a custom elliptic curve to derive an AES-CBC key, then encrypts the flag.
+The challenge provides a tiny PNG wrapped in a tarball and hints at QR behavior via its name: **Quick Response**. Direct QR decoding fails (`zbarimg` returns nothing), so this is not a plain QR image.
 
-At first glance, solving ECDH should require breaking elliptic-curve discrete log, which is supposed to be hard. But the challenge title and hint about "abnormal ellipses" point to anomalous elliptic curves, where the curve order is exactly equal to the field prime ($#E(\mathbb{F}_p)=p$).
+The key observation is that the image size is `928 x 928`, and:
 
-For anomalous curves, Smart's attack reduces ECDLP to arithmetic over $\mathbb{Z}/p^2\mathbb{Z}$ and recovers private scalars efficiently. Once one scalar is recovered, the shared secret follows immediately, and AES decryption reveals the flag.
+- `928 = 29 x 32`
+
+A `29x29` module grid corresponds to a valid QR dimension (Version 3). This reveals that the image is a block-scaled module matrix where each logical module is `32x32` pixels. From there, the solve is to reconstruct the logical matrix, then brute-force a small family of likely visual transformations (mask/inversion/flip/rotation) until a valid QR payload decodes.
 
 ### Vulnerability Analysis
 
-The provided code:
+This is not a software memory-corruption bug; it is an **obfuscation weakness** in challenge design:
 
-1. Defines a custom curve $E: y^2=x^3+ax+b \pmod p$
-2. Picks random base point $G$
-3. Generates private keys $d_A,d_B$
-4. Publishes $P_A=d_A G$ and $P_B=d_B G$
-5. Derives AES key from $x(d_B P_A)$
+1. The payload remains QR-structured.
+2. The transformation space is finite and enumerable.
+3. The image dimensions leak exact module geometry.
 
-Normally this is secure, but the curve is anomalous. In that setting, ECDLP can be solved in polynomial time with Smart's attack.
+So the challenge depends on preventing naive decoders, but it can still be defeated by systematic reconstruction and search.
 
-The core weakness is not AES or CBC mode, but weak curve selection. A custom curve without order validation is dangerous, and anomalous curves are a known forbidden class.
+Technical indicators:
+
+- Normal QR decoder fails on original image.
+- No obvious metadata flag in EXIF/text chunks.
+- Run-length periodicity clearly indicates fixed-size module scaling.
+- Candidate transformed matrices decode cleanly once the correct mapping is applied.
 
 ### Exploit Strategy
 
-1. Parse $p,a,b,G,P_A,P_B$, ciphertext, and IV from challenge files.
-2. Use Smart's anomalous-curve method to solve:
-   - $d_A$ from $(G,P_A)$
-   - optionally $d_B$ from $(G,P_B)$ for cross-check
-3. Compute shared secret point $S=d_A P_B$.
-4. Hash $x(S)$ with SHA-256 to get AES-256 key.
-5. Decrypt with AES-CBC and remove PKCS#7 padding.
+Use a deterministic pipeline:
 
-Smart attack outline used here:
+1. Unpack and triage the file.
+2. Confirm dimensions and infer module size.
+3. Convert image into a `29x29` logical bit matrix (dark/light per `32x32` block).
+4. Enumerate realistic transformations:
+   - rotations: 0/90/180/270
+   - flips: horizontal/vertical toggles
+   - inversion toggle
+   - checker/periodic/QR-like masks with phase shifts
+5. Render each candidate with adequate quiet zone.
+6. Decode each candidate with `zbarimg`.
+7. Stop on first valid QR result.
 
-1. Lift points from $\mathbb{F}_p$ to solutions modulo $p^2$ via Hensel-style correction on $y$.
-2. Compute $p\cdot\widetilde{G}$ and $p\cdot\widetilde{Q}$ on the lifted curve over $\mathbb{Z}/p^2\mathbb{Z}$.
-3. Map these into $\mathbb{F}_p$ with:
-
-$$
-\phi(R)= -\frac{X_R\cdot (Z_R/p)}{Y_R} \pmod p
-$$
-
-for Jacobian coordinates $R=(X_R:Y_R:Z_R)$.
-
-4. Recover scalar $k$ from $Q=kG$ as:
-
-$$
-k = \phi(p\widetilde{Q}) \cdot \phi(p\widetilde{G})^{-1} \pmod p
-$$
+This avoids guesswork and is robust to most QR-style visual obfuscations.
 
 ### Implementation
 
-I implemented a standalone Python solver that:
+Initial triage:
 
-1. Implements elliptic curve arithmetic in affine coordinates mod $p$.
-2. Implements Jacobian arithmetic mod $p^2$ for lifted-point multiplication.
-3. Lifts points from mod $p$ to mod $p^2$.
-4. Applies the anomalous map to recover discrete logs.
-5. Reconstructs the shared key and decrypts ciphertext with `cryptography`.
+```bash
+tar -xzf quick-response.tar.gz
+ls -lah
+file quick-response.png
+exiftool quick-response.png
+zbarimg -q quick-response.png
+```
 
-Key recovered values from execution:
+Expected behavior at this stage:
 
-- $d_A =$ `5302515257459728333067206555460709176819601641952986275899160992587299740102`
-- $d_B =$ `14351322784803667778298934151869100639090151998944262589608260939971387880030`
+```text
+# zbarimg returns no decoded QR data
+```
+
+Dimension clue:
+
+```bash
+python3 - << 'PY'
+w = h = 928
+print(w // 32, h // 32)
+PY
+```
+
+Output:
+
+```text
+29 29
+```
+
+Quick periodicity sanity check (proves 32-pixel block repetition):
+
+```python
+from PIL import Image
+from math import gcd
+
+img = Image.open("quick-response.png").convert("RGB")
+px = img.load()
+w, h = img.size
+
+row = [1 if sum(px[x, 0]) > 400 else 0 for x in range(w)]
+runs = []
+cnt = 1
+for i in range(1, len(row)):
+    if row[i] == row[i - 1]:
+        cnt += 1
+    else:
+        runs.append(cnt)
+        cnt = 1
+runs.append(cnt)
+
+g = 0
+for r in runs:
+    g = gcd(g, r)
+
+print("gcd of run lengths:", g)
+# => 32
+```
+
+Core extraction idea (module reduction):
+
+```python
+from PIL import Image
+
+img = Image.open("quick-response.png").convert("RGB")
+px = img.load()
+
+# For each 32x32 block, classify as dark/light by average intensity.
+base = [[0] * 29 for _ in range(29)]
+for y in range(29):
+    for x in range(29):
+        s = 0
+        for yy in range(y * 32, (y + 1) * 32):
+            for xx in range(x * 32, (x + 1) * 32):
+                r, g, b = px[xx, yy]
+                s += (r + g + b)
+        base[y][x] = 1 if s < (32 * 32 * 3 * 128) else 0
+```
+
+Mask function examples used in brute-force search:
+
+```python
+mask_fns = {
+    "none": lambda x, y, sx, sy: 0,
+    "checker": lambda x, y, sx, sy: ((x + sx) + (y + sy)) % 2,
+    "x2": lambda x, y, sx, sy: (x + sx) % 2,
+    "y2": lambda x, y, sx, sy: (y + sy) % 2,
+    "x3": lambda x, y, sx, sy: (x + sx) % 3 == 0,
+    "y3": lambda x, y, sx, sy: (y + sy) % 3 == 0,
+    "xy3": lambda x, y, sx, sy: ((x + sx) + (y + sy)) % 3 == 0,
+}
+```
+
+Transformation brute-force loop (excerpt):
+
+```python
+for r in range(4):
+    m0 = rot(base, r)
+    for fh in [0, 1]:
+        m1 = flip_h(m0) if fh else m0
+        for fv in [0, 1]:
+            m2 = flip_v(m1) if fv else m1
+            for name, fn in mask_fns.items():
+                for sx in range(3):
+                    for sy in range(3):
+                        for inv in [0, 1]:
+                            candidate = transform(m2, fn, sx, sy, inv)
+                            write_candidate_png(candidate)
+                            out = decode_with_zbarimg()
+                            if out:
+                                print(out)
+                                raise SystemExit(0)
+```
+
+Candidate rendering + decode check (minimal version):
+
+```python
+from PIL import Image, ImageOps
+import subprocess
+
+def check_candidate(bits, n=29):
+    out = Image.new("1", (n, n), 1)
+    op = out.load()
+    for y in range(n):
+        for x in range(n):
+            op[x, y] = 0 if bits[y][x] else 1
+
+    out = out.resize((580, 580), Image.NEAREST)
+    out = ImageOps.expand(out, border=120, fill=1)
+    out.save("candidate.png")
+
+    p = subprocess.run(["zbarimg", "-q", "candidate.png"], capture_output=True, text=True)
+    return p.stdout.strip()
+```
+
+Actual solver used in this directory:
+
+- `bruteforce_qr.py`
+
+Run with candidate artifact generation:
+
+```bash
+python3 bruteforce_qr.py
+ls bf_qr | head
+```
 
 ### Execution & Results
 
-Running the solver produced plaintext:
+Run the solver:
+
+```bash
+python3 bruteforce_qr.py
+```
+
+Successful decode:
 
 ```text
-gigem{an0ma1ou5_curv3_ss5a_d41z8GaFF3kZ8}
+bf_qr/cand_00002_checker_r0_fh0_fv0_sx0_sy0_inv0.png => QR-Code:gigem{d1d_y0u_n0t1c3_th3_t1m1n9_b175}
 ```
 
 Final flag:
 
 ```text
-gigem{an0ma1ou5_curv3_ss5a_d41z8GaFF3kZ8}
+gigem{d1d_y0u_n0t1c3_th3_t1m1n9_b175}
 ```
+
+### Notes
+
+- A bounded brute-force over realistic QR-like transformations is faster and more reliable than trying ad-hoc manual image edits.
+- The successful candidate (`checker` mask path) confirms this is an obfuscated-but-valid QR encoding rather than arbitrary stego noise.
