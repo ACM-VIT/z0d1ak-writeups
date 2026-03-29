@@ -20,10 +20,12 @@ Flag Format:
 
 ## Writeup
 
+The plane in the image, by web search turns out to be a Cessna Caravan. When looking at google photos of different airline liveries, i found `Skydive Arizona`.
+
 ### Flag
 
 ```
-
+hackzero{skydive_arizona}
 ```
 
 ### Executive Summary
