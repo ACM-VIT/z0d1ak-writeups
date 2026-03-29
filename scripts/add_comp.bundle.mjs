@@ -562,6 +562,32 @@ var MD = class extends x {
     return this.value.replaceAll(/./g, this._mask);
   }
 };
+var OD = Object.defineProperty;
+var PD = (e2, u2, t) => u2 in e2 ? OD(e2, u2, { enumerable: true, configurable: true, writable: true, value: t }) : e2[u2] = t;
+var J = (e2, u2, t) => (PD(e2, typeof u2 != "symbol" ? u2 + "" : u2, t), t);
+var LD = class extends x {
+  constructor(u2) {
+    super(u2, false), J(this, "options"), J(this, "cursor", 0), this.options = u2.options, this.cursor = this.options.findIndex(({ value: t }) => t === u2.initialValue), this.cursor === -1 && (this.cursor = 0), this.changeValue(), this.on("cursor", (t) => {
+      switch (t) {
+        case "left":
+        case "up":
+          this.cursor = this.cursor === 0 ? this.options.length - 1 : this.cursor - 1;
+          break;
+        case "down":
+        case "right":
+          this.cursor = this.cursor === this.options.length - 1 ? 0 : this.cursor + 1;
+          break;
+      }
+      this.changeValue();
+    });
+  }
+  get _value() {
+    return this.options[this.cursor];
+  }
+  changeValue() {
+    this.value = this._value.value;
+  }
+};
 var RD = class extends x {
   get valueWithCursor() {
     if (this.state === "submit") return this.value;
@@ -693,6 +719,38 @@ ${import_picocolors2.default.cyan(d2)}
     }
   } }).prompt();
 };
+var ve = (t) => {
+  const n = (r2, i) => {
+    const s = r2.label ?? String(r2.value);
+    switch (i) {
+      case "selected":
+        return `${import_picocolors2.default.dim(s)}`;
+      case "active":
+        return `${import_picocolors2.default.green(k2)} ${s} ${r2.hint ? import_picocolors2.default.dim(`(${r2.hint})`) : ""}`;
+      case "cancelled":
+        return `${import_picocolors2.default.strikethrough(import_picocolors2.default.dim(s))}`;
+      default:
+        return `${import_picocolors2.default.dim(P2)} ${import_picocolors2.default.dim(s)}`;
+    }
+  };
+  return new LD({ options: t.options, initialValue: t.initialValue, render() {
+    const r2 = `${import_picocolors2.default.gray(o)}
+${b2(this.state)}  ${t.message}
+`;
+    switch (this.state) {
+      case "submit":
+        return `${r2}${import_picocolors2.default.gray(o)}  ${n(this.options[this.cursor], "selected")}`;
+      case "cancel":
+        return `${r2}${import_picocolors2.default.gray(o)}  ${n(this.options[this.cursor], "cancelled")}
+${import_picocolors2.default.gray(o)}`;
+      default:
+        return `${r2}${import_picocolors2.default.cyan(o)}  ${G2({ cursor: this.cursor, options: this.options, maxItems: t.maxItems, style: (i, s) => n(i, s ? "active" : "inactive") }).join(`
+${import_picocolors2.default.cyan(o)}  `)}
+${import_picocolors2.default.cyan(d2)}
+`;
+    }
+  } }).prompt();
+};
 var fe = (t) => {
   const n = (r2, i) => {
     const s = r2.label ?? String(r2.value);
@@ -782,7 +840,7 @@ var M2 = { message: (t = "", { symbol: n = import_picocolors2.default.gray(o) } 
 }, error: (t) => {
   M2.message(t, { symbol: import_picocolors2.default.red(K2) });
 } };
-var J = `${import_picocolors2.default.gray(o)}  `;
+var J2 = `${import_picocolors2.default.gray(o)}  `;
 var Y2 = ({ indicator: t = "dots" } = {}) => {
   const n = V2 ? ["\u25D2", "\u25D0", "\u25D3", "\u25D1"] : ["\u2022", "o", "O", "0"], r2 = V2 ? 80 : 120, i = process.env.CI === "true";
   let s, c, a = false, l2 = "", $2, g2 = performance.now();
@@ -887,14 +945,19 @@ var BANNER_VARIANTS = [
 ];
 function showHelp() {
   console.log(`
-Usage: ./add_comp.sh [ctftime_event_url]
+Usage:
+  ./add_comp.sh
+  ./add_comp.sh <ctftime_event_url>
+  ./add_comp.sh --manual
 
 Create a CTF event scaffold using the interactive add comp flow.
 
 Examples:
   ./add_comp.sh
   ./add_comp.sh https://ctftime.org/event/3171/
+  ./add_comp.sh --manual
   pnpm run add:comp -- https://ctftime.org/event/3171/
+  pnpm run add:comp -- --manual
 `);
 }
 function getTerminalWidth() {
@@ -937,7 +1000,7 @@ function unwrapPrompt(value, message) {
   return value;
 }
 function normalizeUrl(value) {
-  return value.trim().replace(/\/+$/, "");
+  return typeof value === "string" ? value.trim().replace(/\/+$/, "") : "";
 }
 function parseEventIdFromUrl(input) {
   const trimmed = input.trim();
@@ -1107,7 +1170,7 @@ function buildEventReadme(event, config) {
     "",
     "| Field        | Value |",
     "|--------------|-------|",
-    `| CTFtime      | ${event.ctftimeUrl} |`,
+    `| CTFtime      | ${valueOrFallback(event.ctftimeUrl)} |`,
     `| Website      | ${valueOrFallback(event.website)} |`,
     `| Format       | ${valueOrFallback(event.format)} |`,
     `| Restrictions | ${valueOrFallback(event.restrictions)} |`,
@@ -1210,6 +1273,7 @@ async function fetchEventMetadata(eventUrl) {
   }
   const data = await response.json();
   return {
+    source: "ctftime",
     eventId,
     title: valueOrFallback(data.title, `Event ${eventId}`),
     ctftimeUrl: normalizedUrl.startsWith("http") ? normalizedUrl : `https://ctftime.org/event/${eventId}`,
@@ -1246,6 +1310,165 @@ async function promptForEventUrl(initialUrl) {
     "Setup cancelled"
   );
   return normalizeUrl(value);
+}
+function validateOptionalUrl(input) {
+  const normalized = normalizeUrl(input);
+  if (!normalized) {
+    return void 0;
+  }
+  try {
+    new URL(normalized);
+    return void 0;
+  } catch {
+    return "Enter a valid URL or leave blank.";
+  }
+}
+async function promptForOptionalUrl({ message, placeholder, initialValue = "" }) {
+  const value = unwrapPrompt(
+    await he({
+      message,
+      placeholder,
+      initialValue,
+      validate: validateOptionalUrl
+    }),
+    "Setup cancelled"
+  );
+  return normalizeUrl(value);
+}
+async function promptForOptionalText({ message, placeholder, initialValue = "" }) {
+  const value = unwrapPrompt(
+    await he({
+      message,
+      placeholder,
+      initialValue
+    }),
+    "Setup cancelled"
+  );
+  return typeof value === "string" ? value.trim() : "";
+}
+async function promptForEventSource() {
+  return unwrapPrompt(
+    await ve({
+      message: "How should event metadata be loaded?",
+      initialValue: "ctftime",
+      options: [
+        {
+          value: "ctftime",
+          label: "Fetch from CTFtime",
+          hint: "Use a CTFtime event URL"
+        },
+        {
+          value: "manual",
+          label: "Enter manually",
+          hint: "For non-CTFtime or private events"
+        }
+      ]
+    }),
+    "Setup cancelled"
+  );
+}
+async function promptForManualEventDetails() {
+  const title = unwrapPrompt(
+    await he({
+      message: "Event title",
+      placeholder: "Internal Security Workshop 2026",
+      validate(input) {
+        const trimmed = input.trim();
+        if (!trimmed) {
+          return "An event title is required.";
+        }
+        if (trimmed === "." || trimmed === ".." || /[\\/]/.test(trimmed)) {
+          return "Event title cannot contain path separators.";
+        }
+        return void 0;
+      }
+    }),
+    "Setup cancelled"
+  ).trim();
+  const website = await promptForOptionalUrl({
+    message: "Event website",
+    placeholder: "https://example.com"
+  });
+  const format = await promptForOptionalText({
+    message: "Format",
+    placeholder: "Jeopardy, Attack-Defense, Workshop"
+  });
+  const restrictions = await promptForOptionalText({
+    message: "Restrictions",
+    placeholder: "Open, Students only, Invite only"
+  });
+  const onsiteSelection = unwrapPrompt(
+    await ve({
+      message: "Onsite requirement",
+      initialValue: "unknown",
+      options: [
+        {
+          value: "unknown",
+          label: "Unknown / not specified"
+        },
+        {
+          value: "false",
+          label: "Online / no onsite requirement"
+        },
+        {
+          value: "true",
+          label: "Onsite or hybrid requirement"
+        }
+      ]
+    }),
+    "Setup cancelled"
+  );
+  const location = await promptForOptionalText({
+    message: "Location",
+    placeholder: "Optional city, campus, or region"
+  });
+  const start = await promptForOptionalText({
+    message: "Start time",
+    placeholder: "2026-04-10T12:00:00+05:30"
+  });
+  const finish = await promptForOptionalText({
+    message: "End time",
+    placeholder: "2026-04-12T12:00:00+05:30"
+  });
+  const participants = await promptForOptionalText({
+    message: "Participants",
+    placeholder: "Optional participant count"
+  });
+  const weight = await promptForOptionalText({
+    message: "Weight",
+    placeholder: "Optional event weight"
+  });
+  const description = await promptForOptionalText({
+    message: "Description",
+    placeholder: "Optional short description"
+  });
+  const discordLink = await promptForOptionalUrl({
+    message: "Discord invite",
+    placeholder: "https://discord.gg/example"
+  });
+  const liveFeed = await promptForOptionalUrl({
+    message: "Live feed URL",
+    placeholder: "https://example.com/live"
+  });
+  return {
+    source: "manual",
+    eventId: "",
+    title,
+    ctftimeUrl: "",
+    website,
+    start,
+    finish,
+    format,
+    participants,
+    description,
+    restrictions,
+    location,
+    weight,
+    onsite: onsiteSelection === "unknown" ? "" : onsiteSelection,
+    liveFeed,
+    prizes: "",
+    discordLink
+  };
 }
 async function promptForManualCategories() {
   const defaults = await loadDefaultCategories();
@@ -1484,13 +1707,18 @@ async function importCtfdChallenges(eventDir, baseUrl, token, challengeIds, know
   return counts;
 }
 function buildEventSummaryLines(event) {
-  const lines = [
-    `  ${import_picocolors3.default.dim("CTFtime:")} ${event.ctftimeUrl}`,
-    `  ${import_picocolors3.default.dim("Website:")} ${valueOrFallback(event.website)}`,
-    `  ${import_picocolors3.default.dim("Format:")} ${valueOrFallback(event.format)} (${valueOrFallback(event.restrictions)})`,
-    `  ${import_picocolors3.default.dim("Start:")} ${valueOrFallback(event.start)}`,
-    `  ${import_picocolors3.default.dim("End:")} ${valueOrFallback(event.finish)}`
-  ];
+  const lines = [];
+  if (event.source === "manual") {
+    lines.push(`  ${import_picocolors3.default.dim("Source:")} manual entry`);
+  } else {
+    lines.push(`  ${import_picocolors3.default.dim("CTFtime:")} ${valueOrFallback(event.ctftimeUrl)}`);
+  }
+  lines.push(`  ${import_picocolors3.default.dim("Website:")} ${valueOrFallback(event.website)}`);
+  lines.push(
+    `  ${import_picocolors3.default.dim("Format:")} ${valueOrFallback(event.format)} (${valueOrFallback(event.restrictions)})`
+  );
+  lines.push(`  ${import_picocolors3.default.dim("Start:")} ${valueOrFallback(event.start)}`);
+  lines.push(`  ${import_picocolors3.default.dim("End:")} ${valueOrFallback(event.finish)}`);
   return lines.join("\n");
 }
 function buildSetupSummaryLines(eventDir, plan) {
@@ -1527,17 +1755,48 @@ async function createManualCategories(eventDir, categories) {
     createdCategories: categories.length
   };
 }
-async function runAddComp(initialUrl = "") {
+async function loadCtftimeEvent(initialUrl = "") {
+  const eventUrl = initialUrl ? normalizeUrl(initialUrl) : await promptForEventUrl("");
+  if (initialUrl) {
+    parseEventIdFromUrl(eventUrl);
+  }
+  const eventSpinner = Y2();
+  eventSpinner.start("Fetching event metadata...");
+  const event = await fetchEventMetadata(eventUrl);
+  eventSpinner.stop(`Loaded ${import_picocolors3.default.green(event.title)}`);
+  return event;
+}
+async function loadEventDetails(options = {}) {
+  const { initialUrl = "", preferManual = false } = options;
+  if (initialUrl) {
+    return loadCtftimeEvent(initialUrl);
+  }
+  if (preferManual) {
+    return promptForManualEventDetails();
+  }
+  const source = await promptForEventSource();
+  if (source === "manual") {
+    return promptForManualEventDetails();
+  }
+  return loadCtftimeEvent("");
+}
+function normalizeRunOptions(options = {}) {
+  if (typeof options === "string") {
+    return {
+      initialUrl: options,
+      preferManual: false
+    };
+  }
+  return {
+    initialUrl: options.initialUrl ?? "",
+    preferManual: options.preferManual ?? false
+  };
+}
+async function runAddComp(options = {}) {
+  const { initialUrl, preferManual } = normalizeRunOptions(options);
   showBanner();
   try {
-    const eventUrl = initialUrl ? normalizeUrl(initialUrl) : await promptForEventUrl("");
-    if (initialUrl) {
-      parseEventIdFromUrl(eventUrl);
-    }
-    const eventSpinner = Y2();
-    eventSpinner.start("Fetching event metadata...");
-    const event = await fetchEventMetadata(eventUrl);
-    eventSpinner.stop(`Loaded ${import_picocolors3.default.green(event.title)}`);
+    const event = await loadEventDetails({ initialUrl, preferManual });
     Me(buildEventSummaryLines(event), event.title);
     const usesCtfd = unwrapPrompt(
       await ye({
@@ -1674,16 +1933,22 @@ async function runAddComp(initialUrl = "") {
 }
 var isDirectRun = process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (isDirectRun) {
-  const args = process.argv.slice(2);
-  if (args.includes("--help") || args.includes("-h")) {
+  const rawArgs = process.argv.slice(2);
+  const wantsHelp = rawArgs.includes("--help") || rawArgs.includes("-h");
+  const preferManual = rawArgs.includes("--manual");
+  const args = rawArgs.filter((arg) => arg !== "--help" && arg !== "-h" && arg !== "--manual");
+  if (wantsHelp) {
     showHelp();
     process.exit(0);
   }
-  if (args.length > 1) {
-    console.error("Usage: ./add_comp.sh [ctftime_event_url]");
+  if (preferManual && args.length > 0 || args.length > 1) {
+    console.error("Usage:\n  ./add_comp.sh\n  ./add_comp.sh <ctftime_event_url>\n  ./add_comp.sh --manual");
     process.exit(1);
   }
-  await runAddComp(args[0] ?? "");
+  await runAddComp({
+    initialUrl: args[0] ?? "",
+    preferManual
+  });
 }
 export {
   buildChallengeReadme,
