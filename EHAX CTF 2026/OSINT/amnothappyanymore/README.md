@@ -32,7 +32,3 @@ On searching Greenland for a while you will find the location - Nuugaarmiunut, G
 ```
 EH4X{gr33nl4nd_15nt_gr33n_4nd_1c3l4nd_15nt_wh1t3}
 ```
-
-## Author
-
-TitanCode
