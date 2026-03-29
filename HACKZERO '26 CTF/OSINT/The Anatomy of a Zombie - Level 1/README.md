@@ -18,10 +18,16 @@ Flag Format:
 
 ## Writeup
 
+The clue points to Agent.BTZ, on searching major rewrite is Ch 2.14.1 and the artifact is thumb.dd
+
+`https://blog.gdatasoftware.com/2015/01/23927-evolution-of-sophisticated-spyware-from-agent-btz-to-comrat`
+`https://securelist.com/agent-btz-a-source-of-inspiration/58551/`
+
+
 ### Flag
 
 ```
-
+hackzero{Ch_2.14.1_thumb.dd}
 ```
 
 ### Executive Summary
