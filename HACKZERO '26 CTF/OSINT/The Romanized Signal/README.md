@@ -17,10 +17,14 @@ Flag Format:
 
 ## Writeup
 
+The files tell about the death of Subhash Chandra Bose. I couldn't find anything useful in the files. I found multiple articles and posts about the broadcasts, but this led me to the flag
+`https://www.business-standard.com/article/current-affairs/was-netaji-alive-even-after-1945-115091801243_1.html`
+
+
 ### Flag
 
 ```
-
+hackzero{peking-1949}
 ```
 
 ### Executive Summary
