@@ -58,14 +58,19 @@ const BANNER_VARIANTS = [
 
 function showHelp() {
   console.log(`
-Usage: ./add_comp.sh [ctftime_event_url]
+Usage:
+  ./add_comp.sh
+  ./add_comp.sh <ctftime_event_url>
+  ./add_comp.sh --manual
 
 Create a CTF event scaffold using the interactive add comp flow.
 
 Examples:
   ./add_comp.sh
   ./add_comp.sh https://ctftime.org/event/3171/
+  ./add_comp.sh --manual
   pnpm run add:comp -- https://ctftime.org/event/3171/
+  pnpm run add:comp -- --manual
 `);
 }
 
@@ -118,7 +123,7 @@ function unwrapPrompt(value, message) {
 }
 
 function normalizeUrl(value) {
-  return value.trim().replace(/\/+$/, '');
+  return typeof value === 'string' ? value.trim().replace(/\/+$/, '') : '';
 }
 
 function parseEventIdFromUrl(input) {
@@ -331,7 +336,7 @@ function buildEventReadme(event, config) {
     '',
     '| Field        | Value |',
     '|--------------|-------|',
-    `| CTFtime      | ${event.ctftimeUrl} |`,
+    `| CTFtime      | ${valueOrFallback(event.ctftimeUrl)} |`,
     `| Website      | ${valueOrFallback(event.website)} |`,
     `| Format       | ${valueOrFallback(event.format)} |`,
     `| Restrictions | ${valueOrFallback(event.restrictions)} |`,
@@ -452,6 +457,7 @@ async function fetchEventMetadata(eventUrl) {
   const data = await response.json();
 
   return {
+    source: 'ctftime',
     eventId,
     title: valueOrFallback(data.title, `Event ${eventId}`),
     ctftimeUrl: normalizedUrl.startsWith('http') ? normalizedUrl : `https://ctftime.org/event/${eventId}`,
@@ -490,6 +496,188 @@ async function promptForEventUrl(initialUrl) {
   );
 
   return normalizeUrl(value);
+}
+
+function validateOptionalUrl(input) {
+  const normalized = normalizeUrl(input);
+  if (!normalized) {
+    return undefined;
+  }
+
+  try {
+    new URL(normalized);
+    return undefined;
+  } catch {
+    return 'Enter a valid URL or leave blank.';
+  }
+}
+
+async function promptForOptionalUrl({ message, placeholder, initialValue = '' }) {
+  const value = unwrapPrompt(
+    await p.text({
+      message,
+      placeholder,
+      initialValue,
+      validate: validateOptionalUrl,
+    }),
+    'Setup cancelled'
+  );
+
+  return normalizeUrl(value);
+}
+
+async function promptForOptionalText({ message, placeholder, initialValue = '' }) {
+  const value = unwrapPrompt(
+    await p.text({
+      message,
+      placeholder,
+      initialValue,
+    }),
+    'Setup cancelled'
+  );
+
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+async function promptForEventSource() {
+  return unwrapPrompt(
+    await p.select({
+      message: 'How should event metadata be loaded?',
+      initialValue: 'ctftime',
+      options: [
+        {
+          value: 'ctftime',
+          label: 'Fetch from CTFtime',
+          hint: 'Use a CTFtime event URL',
+        },
+        {
+          value: 'manual',
+          label: 'Enter manually',
+          hint: 'For non-CTFtime or private events',
+        },
+      ],
+    }),
+    'Setup cancelled'
+  );
+}
+
+async function promptForManualEventDetails() {
+  const title = unwrapPrompt(
+    await p.text({
+      message: 'Event title',
+      placeholder: 'Internal Security Workshop 2026',
+      validate(input) {
+        const trimmed = input.trim();
+        if (!trimmed) {
+          return 'An event title is required.';
+        }
+
+        if (trimmed === '.' || trimmed === '..' || /[\\/]/.test(trimmed)) {
+          return 'Event title cannot contain path separators.';
+        }
+
+        return undefined;
+      },
+    }),
+    'Setup cancelled'
+  ).trim();
+
+  const website = await promptForOptionalUrl({
+    message: 'Event website',
+    placeholder: 'https://example.com',
+  });
+
+  const format = await promptForOptionalText({
+    message: 'Format',
+    placeholder: 'Jeopardy, Attack-Defense, Workshop',
+  });
+
+  const restrictions = await promptForOptionalText({
+    message: 'Restrictions',
+    placeholder: 'Open, Students only, Invite only',
+  });
+
+  const onsiteSelection = unwrapPrompt(
+    await p.select({
+      message: 'Onsite requirement',
+      initialValue: 'unknown',
+      options: [
+        {
+          value: 'unknown',
+          label: 'Unknown / not specified',
+        },
+        {
+          value: 'false',
+          label: 'Online / no onsite requirement',
+        },
+        {
+          value: 'true',
+          label: 'Onsite or hybrid requirement',
+        },
+      ],
+    }),
+    'Setup cancelled'
+  );
+
+  const location = await promptForOptionalText({
+    message: 'Location',
+    placeholder: 'Optional city, campus, or region',
+  });
+
+  const start = await promptForOptionalText({
+    message: 'Start time',
+    placeholder: '2026-04-10T12:00:00+05:30',
+  });
+
+  const finish = await promptForOptionalText({
+    message: 'End time',
+    placeholder: '2026-04-12T12:00:00+05:30',
+  });
+
+  const participants = await promptForOptionalText({
+    message: 'Participants',
+    placeholder: 'Optional participant count',
+  });
+
+  const weight = await promptForOptionalText({
+    message: 'Weight',
+    placeholder: 'Optional event weight',
+  });
+
+  const description = await promptForOptionalText({
+    message: 'Description',
+    placeholder: 'Optional short description',
+  });
+
+  const discordLink = await promptForOptionalUrl({
+    message: 'Discord invite',
+    placeholder: 'https://discord.gg/example',
+  });
+
+  const liveFeed = await promptForOptionalUrl({
+    message: 'Live feed URL',
+    placeholder: 'https://example.com/live',
+  });
+
+  return {
+    source: 'manual',
+    eventId: '',
+    title,
+    ctftimeUrl: '',
+    website,
+    start,
+    finish,
+    format,
+    participants,
+    description,
+    restrictions,
+    location,
+    weight,
+    onsite: onsiteSelection === 'unknown' ? '' : onsiteSelection,
+    liveFeed,
+    prizes: '',
+    discordLink,
+  };
 }
 
 async function promptForManualCategories() {
@@ -773,13 +961,20 @@ async function importCtfdChallenges(eventDir, baseUrl, token, challengeIds, know
 }
 
 function buildEventSummaryLines(event) {
-  const lines = [
-    `  ${pc.dim('CTFtime:')} ${event.ctftimeUrl}`,
-    `  ${pc.dim('Website:')} ${valueOrFallback(event.website)}`,
-    `  ${pc.dim('Format:')} ${valueOrFallback(event.format)} (${valueOrFallback(event.restrictions)})`,
-    `  ${pc.dim('Start:')} ${valueOrFallback(event.start)}`,
-    `  ${pc.dim('End:')} ${valueOrFallback(event.finish)}`,
-  ];
+  const lines = [];
+
+  if (event.source === 'manual') {
+    lines.push(`  ${pc.dim('Source:')} manual entry`);
+  } else {
+    lines.push(`  ${pc.dim('CTFtime:')} ${valueOrFallback(event.ctftimeUrl)}`);
+  }
+
+  lines.push(`  ${pc.dim('Website:')} ${valueOrFallback(event.website)}`);
+  lines.push(
+    `  ${pc.dim('Format:')} ${valueOrFallback(event.format)} (${valueOrFallback(event.restrictions)})`
+  );
+  lines.push(`  ${pc.dim('Start:')} ${valueOrFallback(event.start)}`);
+  lines.push(`  ${pc.dim('End:')} ${valueOrFallback(event.finish)}`);
 
   return lines.join('\n');
 }
@@ -823,19 +1018,59 @@ async function createManualCategories(eventDir, categories) {
   };
 }
 
-async function runAddComp(initialUrl = '') {
+async function loadCtftimeEvent(initialUrl = '') {
+  const eventUrl = initialUrl ? normalizeUrl(initialUrl) : await promptForEventUrl('');
+  if (initialUrl) {
+    parseEventIdFromUrl(eventUrl);
+  }
+
+  const eventSpinner = p.spinner();
+  eventSpinner.start('Fetching event metadata...');
+  const event = await fetchEventMetadata(eventUrl);
+  eventSpinner.stop(`Loaded ${pc.green(event.title)}`);
+
+  return event;
+}
+
+async function loadEventDetails(options = {}) {
+  const { initialUrl = '', preferManual = false } = options;
+
+  if (initialUrl) {
+    return loadCtftimeEvent(initialUrl);
+  }
+
+  if (preferManual) {
+    return promptForManualEventDetails();
+  }
+
+  const source = await promptForEventSource();
+  if (source === 'manual') {
+    return promptForManualEventDetails();
+  }
+
+  return loadCtftimeEvent('');
+}
+
+function normalizeRunOptions(options = {}) {
+  if (typeof options === 'string') {
+    return {
+      initialUrl: options,
+      preferManual: false,
+    };
+  }
+
+  return {
+    initialUrl: options.initialUrl ?? '',
+    preferManual: options.preferManual ?? false,
+  };
+}
+
+async function runAddComp(options = {}) {
+  const { initialUrl, preferManual } = normalizeRunOptions(options);
   showBanner();
 
   try {
-    const eventUrl = initialUrl ? normalizeUrl(initialUrl) : await promptForEventUrl('');
-    if (initialUrl) {
-      parseEventIdFromUrl(eventUrl);
-    }
-
-    const eventSpinner = p.spinner();
-    eventSpinner.start('Fetching event metadata...');
-    const event = await fetchEventMetadata(eventUrl);
-    eventSpinner.stop(`Loaded ${pc.green(event.title)}`);
+    const event = await loadEventDetails({ initialUrl, preferManual });
 
     p.note(buildEventSummaryLines(event), event.title);
 
@@ -993,18 +1228,25 @@ const isDirectRun =
   process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 
 if (isDirectRun) {
-  const args = process.argv.slice(2);
-  if (args.includes('--help') || args.includes('-h')) {
+  const rawArgs = process.argv.slice(2);
+  const wantsHelp = rawArgs.includes('--help') || rawArgs.includes('-h');
+  const preferManual = rawArgs.includes('--manual');
+  const args = rawArgs.filter((arg) => arg !== '--help' && arg !== '-h' && arg !== '--manual');
+
+  if (wantsHelp) {
     showHelp();
     process.exit(0);
   }
 
-  if (args.length > 1) {
-    console.error('Usage: ./add_comp.sh [ctftime_event_url]');
+  if ((preferManual && args.length > 0) || args.length > 1) {
+    console.error('Usage:\n  ./add_comp.sh\n  ./add_comp.sh <ctftime_event_url>\n  ./add_comp.sh --manual');
     process.exit(1);
   }
 
-  await runAddComp(args[0] ?? '');
+  await runAddComp({
+    initialUrl: args[0] ?? '',
+    preferManual,
+  });
 }
 
 export {
