@@ -24,10 +24,14 @@ Flag format:
 
 ## Writeup
 
+Google search the file provided and get this website with all details
+`https://rcdb.com/693.htm`
+  
+
 ### Flag
 
 ```
-
+hackzero{chippewa_lake_park_little_dipper_owen_varga}
 ```
 
 ### Executive Summary
