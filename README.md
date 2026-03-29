@@ -44,13 +44,14 @@ Event Name/
 
 ## `add_comp.sh`
 
-Use `add_comp.sh` to bootstrap a new competition from a CTFtime event URL. The flow is interactive and uses a bundled prompt-driven CLI UI for event review, category selection, setup summary, and confirmation.
+Use `add_comp.sh` to bootstrap a new competition from either a CTFtime event URL or manually entered event metadata. The flow is interactive and uses a bundled prompt-driven CLI UI for event review, category selection, setup summary, and confirmation.
 
 ### Basic usage
 
 ```/dev/null/example.sh#L1-2
 ./add_comp.sh
 ./add_comp.sh <ctftime_event_url>
+./add_comp.sh --manual
 ```
 
 Example:
@@ -65,7 +66,7 @@ Example:
 
 `add_comp.sh` will:
 
-1. fetch event metadata from the CTFtime API
+1. either fetch event metadata from the CTFtime API or prompt you to enter it manually
 2. show an event summary before continuing
 3. ask whether the event uses CTFd
 4. do one of the following:
@@ -79,11 +80,17 @@ Example:
 
 When you run the script, you will be prompted for:
 
+- **Event source**  
+  If you start with no arguments, choose whether to fetch from CTFtime or enter the event manually. You can also skip the selector entirely with `./add_comp.sh --manual`.
+
 - **CTFtime event URL**  
-  Required, but you can either pass it on the command line or enter it interactively.
+  Required only for the CTFtime flow. You can either pass it on the command line or enter it interactively.
+
+- **Manual event metadata**  
+  For non-CTFtime events, the script will ask for the event title plus optional metadata such as website, format, restrictions, onsite status, timing, participant count, description, Discord link, and live feed URL.
 
 - **Uses CTFd?**  
-  Choose whether the event runs on CTFd.
+  Choose whether the event runs on CTFd. This works for both CTFtime and manually entered events.
 
 - **CTFd base URL**  
   If the event uses CTFd, you can confirm or override the detected site URL.
