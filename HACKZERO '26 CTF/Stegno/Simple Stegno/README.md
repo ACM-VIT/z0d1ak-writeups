@@ -1,10 +1,10 @@
 # Simple Stegno
 
-| Field      | Value |
-|------------|-------|
-| Category   | Stegno |
-| Points     | 150 |
-| Solves     | 104 |
+| Field    | Value  |
+| -------- | ------ |
+| Category | Stegno |
+| Points   | 150    |
+| Solves   | 104    |
 
 ## Description
 
@@ -18,24 +18,10 @@ Sometimes the simplest tools leave the deepest marks.
 
 ## Writeup
 
+zsteg output.png reveals flag
+
 ### Flag
 
 ```
-
+hackzero{e54f544757931a7e10535d2390adfb08}
 ```
-
-### Executive Summary
-
-
-### Vulnerability Analysis
-
-
-### Exploit Strategy
-
-
-### Implementation
-
-
-### Execution & Results
-
-
