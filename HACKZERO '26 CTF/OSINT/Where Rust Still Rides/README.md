@@ -17,7 +17,8 @@ Your task:
 3. Identify the original photographer of this image
 
 Flag format:
-hackzero{location_name_coaster_name_photographer_name}
+
+ hackzero{location_name_coaster_name_photographer_name}
 
 ## Files
 
@@ -25,8 +26,10 @@ hackzero{location_name_coaster_name_photographer_name}
 
 ## Writeup
 
-Google search the file provided and get this website with all details - https://rcdb.com/693.htm
-Format as required:
+
+Google search the file provided and get this website with all details
+`https://rcdb.com/693.htm`
+  
 
 ### Flag
 
