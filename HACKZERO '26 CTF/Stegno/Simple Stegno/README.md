@@ -25,13 +25,3 @@ zsteg output.png reveals flag
 ```
 hackzero{e54f544757931a7e10535d2390adfb08}
 ```
-
-### Executive Summary
-
-### Vulnerability Analysis
-
-### Exploit Strategy
-
-### Implementation
-
-### Execution & Results

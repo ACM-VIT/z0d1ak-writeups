@@ -23,13 +23,3 @@ try some villages, Sary-Tash is the correct one
 hackzero{y0u_4r3_0n_7h3_p4m1r_h1ghw4y}
 
 ```
-
-### Executive Summary
-
-### Vulnerability Analysis
-
-### Exploit Strategy
-
-### Implementation
-
-### Execution & Results

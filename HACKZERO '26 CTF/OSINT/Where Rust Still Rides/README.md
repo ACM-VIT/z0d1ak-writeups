@@ -31,7 +31,7 @@ Format as required:
 ### Flag
 
 ```
-hackzero{chippewa_lake_park_little_dipper_owen_varga
+hackzero{chippewa_lake_park_little_dipper_owen_varga}
 ```
 
 ### Executive Summary
