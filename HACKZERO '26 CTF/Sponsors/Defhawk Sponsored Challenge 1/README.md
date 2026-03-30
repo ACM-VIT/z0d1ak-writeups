@@ -42,20 +42,20 @@ DEFHAWK{4_w3ll_ex3cut3d_supply_ch41n_4ttack_W3ll_done!!}
 
 The first thing I did after reading this challenge was paste the guy's name "Karyl Maxson" into my already open Twitter tab, and voila, we had a match for: https://x.com/karylmaxson
 
-Upon going through the literal slop that those tweets are (no offense, chall author, maybe that was intended?), I deduced that Karyl is the Founder & CEO of Karyx-Tech. Since this is obviously a tech org, the first thing I did was navigate to github.com/Karyx-Tech, and we had another hit there. 
+Upon going through the literal slop that those tweets are (no offense, chall author, maybe that was intended?), I deduced that Karyl is the Founder & CEO of Karyx-Tech. Since this is obviously a tech org, the first thing I did was navigate to github.com/Karyx-Tech, and we had another hit there.
 
 The Karyx-Tech GitHub org has 1 public repository listed: https://github.com/Karyx-Tech/dev-iot-util. Some repo stats here:
 
 - Commits: 14
 - Contributors: 4, one of whom is the karyxbot account
 
-Here's when my alarm bells started to ring off, I saw a `.github/workflows` directory and a bot user that was a contributor, so the bot was being probably driven by this workflow and it had some permissions attached to itself too. 
+Here's when my alarm bells started to ring off, I saw a `.github/workflows` directory and a bot user that was a contributor, so the bot was being probably driven by this workflow and it had some permissions attached to itself too.
 
 That's when I got reminded of the numerous supply chain attacks that have been happening lately, starting with Shai-Hulud and then the Shai-Hulud 2.0 where numerous popular packages were compromised via GitHub Actions. (https://unit42.paloaltonetworks.com/npm-supply-chain-attack/)
 
 ### Attack vectors
 
-I did look through the codebase as well, saw a binary called sensor (https://github.com/Karyx-Tech/dev-iot-util/blob/main/firmware/sensor), downloaded it and tried to see if there's anything challenge related I could get out of this. But nope. 
+I did look through the codebase as well, saw a binary called sensor (https://github.com/Karyx-Tech/dev-iot-util/blob/main/firmware/sensor), downloaded it and tried to see if there's anything challenge related I could get out of this. But nope.
 
 I finally looked at the elephant in the room, the workflow, the vulnerability became pretty obvious from there:
 
@@ -75,7 +75,7 @@ The workflow was set up to run on pull_request_target, which is already dangerou
 
 That alone was already bad, but the real issue was how the PR title was being used. The workflow passed the PR title into a Python script, and that script eventually built a shell command with shell=True.
 
-And I don't know why the script was trying to call `./scripts/internal_sync.sh` because that file did not even exist in the repo. 
+And I don't know why the script was trying to call `./scripts/internal_sync.sh` because that file did not even exist in the repo.
 
 ### Can we do command injection?
 
@@ -91,7 +91,7 @@ The first thing I wanted was a basic proof of execution. I used the PR title its
 
   ```' && gh api repos/Karyx-Tech/dev-iot-util/issues/7/comments -f body="$(whoami)" #```
 
-This was pretty simple, we break out of the quoted PR title content, run a command of our choice, use the gh api to comment the output back to the repo and then comment out the rest of the original line. 
+This was pretty simple, we break out of the quoted PR title content, run a command of our choice, use the gh api to comment the output back to the repo and then comment out the rest of the original line.
 
 A few seconds later, the bot commented:
 
@@ -136,7 +136,7 @@ A few things jumped out immediately:
      ```flask_app.secret_key = os.environ.get('SECRET_KEY', 'karyx-iot-super-secret-key-2024')```
 
   4. It also had dummy credentials
-    
+
         VALID_USERNAME = "admin"
         VALID_PASSWORD = "admin"
 
@@ -155,11 +155,11 @@ My first thought was that maybe the app was running on the same self-hosted runn
      I think port 5007 would be the best event with any hostname,
      karyxiot.in:5007 sounds amazing!
 
-And it matched the code that was on the private repo so I knew this was real. 
+And it matched the code that was on the private repo so I knew this was real.
 
 ### Bypassing auth on the prod app
 
-I tried the dummy credentials I found earlier, but that obviously did not work, so then I used the other thing that was leaked, the fallback `SECRET_KEY`, and since Flask session cookies are signed client side, I can now forge my own authentication session. 
+I tried the dummy credentials I found earlier, but that obviously did not work, so then I used the other thing that was leaked, the fallback `SECRET_KEY`, and since Flask session cookies are signed client side, I can now forge my own authentication session.
 
 I used itsdangerous and generated a session cookie with fields like:
 
@@ -171,7 +171,7 @@ I used itsdangerous and generated a session cookie with fields like:
   }
   ```
   Using the Flask cookie serializer settings:
-  ```  
+  ```
   URLSafeTimedSerializer(
       secret_key="karyx-iot-super-secret-key-2024",
       salt="cookie-session",
@@ -188,7 +188,7 @@ I used itsdangerous and generated a session cookie with fields like:
 
 ### Exploiting the firmware endpoint
 
-The /api/firmware route had the exact bug I wanted. It accepted a Base64 string from the firmware_data form field, decoded it, and passed it directly into pickle.loads(). 
+The /api/firmware route had the exact bug I wanted. It accepted a Base64 string from the firmware_data form field, decoded it, and passed it directly into pickle.loads().
 
 Payload:
 
@@ -219,9 +219,3 @@ So I sent one more payload:
 And that returned the flag directly.
 
 `DEFHAWK{4_w3ll_ex3cut3d_supply_ch41n_4ttack_W3ll_done!!}`
-
-
-
-
-
-

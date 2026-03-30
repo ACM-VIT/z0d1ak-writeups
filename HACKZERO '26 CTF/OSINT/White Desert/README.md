@@ -13,10 +13,13 @@ Select an active coordinate to commence geospatial analysis. Identify the locati
 
 ## Writeup
 
+Just upload the image in Google lens to get the location and find the exact streetview coordinates at a dumping yard in Kishangarh, Rajasthan.
+
+
 ### Flag
 
 ```
-
+hackzero{wh173_dump1ng_y4rd_0f_k15h4ng4rh}
 ```
 
 ### Executive Summary
