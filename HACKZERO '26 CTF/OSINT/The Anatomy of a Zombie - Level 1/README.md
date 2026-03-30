@@ -56,6 +56,4 @@ The process involved:
 ### Execution and Results
 
 The gathered information matched all clues in the challenge. The final version string and log file name were combined to form the correct flag.
- Strategy
-
 

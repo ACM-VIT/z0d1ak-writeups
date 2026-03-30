@@ -13,7 +13,7 @@ The Turla ecosystem is vast. Before dropping heavy backdoors, the group often de
 What is the .exe name of the legacy packet sniffer Epic Turla checks for, and what is the second `32-bit` hex magic value Uroburos looks for?
 
 Flag Format:
-`hackzero{filename.exe_0xHEXVALUE}` 
+`hackzero{filename.exe_0xHEXVALUE}`
 **(Hex value strictly in uppercase).**
 
 ### Flag
