@@ -21,10 +21,12 @@ Flag Format:
 
 ## Writeup
 
+Search the image in google lens, it will lead to a Japanese castle grounds. See google images that matches castle gate picture with 3 door posters and light brown signage board - that led me to `https://imaginext.co.jp/streetview.html`, here see street views to find location
+
 ### Flag
 
 ```
-
+hackzero{Kaminoyama_Castle}
 ```
 
 ### Executive Summary

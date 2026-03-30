@@ -13,10 +13,12 @@ Select an active coordinate to commence geospatial analysis. Identify the locati
 
 ## Writeup
 
+I am a Panchayat series fan, i got the location as soon as i saw the location. It is located in Mahodiya village of Madhya Pradhesh.
+
 ### Flag
 
 ```
-
+hackzero{y0u_4r3_7h3_r34l_s4ch1v}
 ```
 
 ### Executive Summary

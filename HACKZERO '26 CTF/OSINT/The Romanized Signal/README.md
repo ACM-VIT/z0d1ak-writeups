@@ -1,5 +1,5 @@
 # The Romanized Signal
- 
+
 
 | Field      | Value |
 |------------|-------|
@@ -9,7 +9,7 @@
 
 ## Description
 
-Description: In the world of intelligence, legal paperwork is often a shroud for the truth. You have been provided with a link to a 110-page legal bundle from the Prime Minister’s Office regarding a high-profile disappearance. While the first hundred pages are filled with modern affidavits and legal jargon, your mission is to locate the original intelligence folios buried at the end of the file. Find a specific report regarding a "strange broadcast" captured during the winter. To secure the flag, identify the physical city named in that historical log as the source of the transmission and the year it was intercepted. 
+Description: In the world of intelligence, legal paperwork is often a shroud for the truth. You have been provided with a link to a 110-page legal bundle from the Prime Minister’s Office regarding a high-profile disappearance. While the first hundred pages are filled with modern affidavits and legal jargon, your mission is to locate the original intelligence folios buried at the end of the file. Find a specific report regarding a "strange broadcast" captured during the winter. To secure the flag, identify the physical city named in that historical log as the source of the transmission and the year it was intercepted.
 
 Flag Format:
 `hackzero{cityname_year}`

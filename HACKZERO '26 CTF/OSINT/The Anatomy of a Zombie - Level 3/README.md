@@ -13,7 +13,7 @@ Fast forward to 2017. The developers had abandoned USB worms and deployed ComRAT
 Name the specific open-source HTML parsing library ComRAT v4 utilized, and the file extension it used to disguise its command attachments.
 
 Flag Format:
-`hackzero{LibraryName_Extension}` 
+`hackzero{LibraryName_Extension}`
 **(Library name as it is, extension in lowercase without the dot).**
 
 ## Writeup
