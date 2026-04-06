@@ -16,24 +16,37 @@ Flag format: hackzero()
 
 ## Writeup
 
-### Flag
+> ```Flag:```  `hackzero(vib3security)`
 
-```
-
-```
-
-### Executive Summary
-
-
-### Vulnerability Analysis
-
-
-### Exploit Strategy
+## Challenge Information
+- **CTF Name:** HackZero 2026
+- **Challenge Name:** Vibesecurity Sponsered Challenge
+- **Category:** Sponsership Challs: Web Catg.
+- **Points:** 150
+- **Author:** @Vibsecurity
+- **Solved By:** ret2.libc
 
 
-### Implementation
+## Category
+OSINT / Web Recon
 
+## Recon Approach
+- I Opened the sponsor website in a browser.
+- Inspected visible page content.
+- View the page source (Ctrl+U) to search for hidden clues.
 
-### Execution & Results
+## Findings
+- The homepage source contained a hidden HTML comment indicating an easter egg:
 
+  ```html
+  <!--
+    CTF EASTER EGG
+    hackzero(vib3security)
+    If you can read this, you know where to look.
+  -->
+  ```
+![alt text](image.png)
 
+## Author
+
+ret2.libc

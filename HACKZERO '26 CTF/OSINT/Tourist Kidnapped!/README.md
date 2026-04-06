@@ -21,26 +21,13 @@ Flag Format:
 
 ## Writeup
 
-Search the image in google lens, it will lead to a Japanese castle grounds. See google images that matches castle gate picture with 3 door posters and light brown signage board - that led me to `https://imaginext.co.jp/streetview.html`, here see street views to find location
-
-### Flag
-
-```
-hackzero{Kaminoyama_Castle}
-```
-
-### Executive Summary
+Tourist Kidnapped
 
 
-### Vulnerability Analysis
+I Search the image in google lens, it lead to a Japanese castle grounds. Seeing google images that matches castle gate picture with 3 door posters and light brown signage board and finally that led me to https://imaginext.co.jp/streetview.html, here I saw street views to find location
 
+Flag: hackzero{Kaminoyama_Castle}
 
-### Exploit Strategy
+## Author
 
-
-### Implementation
-
-
-### Execution & Results
-
-
+ret2.libc
