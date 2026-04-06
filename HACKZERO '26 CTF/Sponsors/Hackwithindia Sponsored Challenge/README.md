@@ -15,24 +15,12 @@ Flag Format: HACKZERO()
 
 ## Writeup
 
-### Flag
+Going through their official website, saw the source, and the flag was found.
 
-```
+HACKZERO(H3CKWITHINDIA)
 
-```
+![alt text](image.png)
 
-### Executive Summary
+## Author
 
-
-### Vulnerability Analysis
-
-
-### Exploit Strategy
-
-
-### Implementation
-
-
-### Execution & Results
-
-
+ret2.libc
