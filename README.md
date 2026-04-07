@@ -42,6 +42,26 @@ Event Name/
 <Event>/<Category>/<Challenge>/README.md
 ```
 
+## Git LFS
+
+Challenge asset files are stored through Git LFS, while writeups and source-style files stay in normal Git.
+
+- event directories are tracked through `.gitattributes`
+- `README.md` and common source files remain regular Git blobs
+- `.lfsconfig` excludes LFS payload downloads by default so fresh clones and pulls stay lightweight
+
+To fetch assets only for one area you need, run:
+
+```/dev/null/example.sh#L1-1
+git lfs pull -I "HACKZERO '26 CTF/**"
+```
+
+To fetch every LFS-backed asset in the repo, run:
+
+```/dev/null/example.sh#L1-1
+git lfs pull
+```
+
 ## `add_comp.sh`
 
 Use `add_comp.sh` to bootstrap a new competition from either a CTFtime event URL or manually entered event metadata. The flow is interactive and uses a bundled prompt-driven CLI UI for event review, category selection, setup summary, and confirmation.

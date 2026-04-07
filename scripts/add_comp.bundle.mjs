@@ -899,6 +899,7 @@ var SCRIPT_FILE = fileURLToPath(import.meta.url);
 var SCRIPT_DIR = path.dirname(SCRIPT_FILE);
 var REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
 var CATEGORIES_FILE = path.join(REPO_ROOT, "categories.txt");
+var GITATTRIBUTES_FILE = path.join(REPO_ROOT, ".gitattributes");
 var USER_AGENT = "Mozilla/5.0 (compatible; z0d1ak-add-comp/2.0)";
 var RESET = "\x1B[0m";
 var GRAYS = [
@@ -1087,9 +1088,15 @@ function formatList(items, maxItems = 4) {
 function countLabel(count, noun) {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
+function toPosixPath(value) {
+  return value.split(path.sep).join("/");
+}
 function relativeDisplay(targetPath) {
   const relative = path.relative(process.cwd(), targetPath) || ".";
   return relative.startsWith(".") ? relative : `./${relative}`;
+}
+function escapeGitAttributesPattern(value) {
+  return JSON.stringify(toPosixPath(value));
 }
 function valueOrFallback(value, fallback = "N/A") {
   if (value === null || value === void 0) {
@@ -1097,6 +1104,33 @@ function valueOrFallback(value, fallback = "N/A") {
   }
   const stringValue = String(value).trim();
   return stringValue.length > 0 && stringValue !== "null" ? stringValue : fallback;
+}
+async function ensureEventDirectoryUsesLfs(eventTitle) {
+  const patternLine = `${escapeGitAttributesPattern(`${eventTitle}/**`)} filter=lfs diff=lfs merge=lfs -text`;
+  const markerLine = "# Keep prose and source files in normal Git.";
+  let current = "";
+  if (existsSync(GITATTRIBUTES_FILE)) {
+    current = await readFile(GITATTRIBUTES_FILE, "utf8");
+  }
+  const lines = current.length > 0 ? current.replace(/\r\n/g, "\n").split("\n") : [];
+  if (lines.includes(patternLine)) {
+    return false;
+  }
+  const markerIndex = lines.findIndex((line) => line === markerLine);
+  if (markerIndex >= 0) {
+    lines.splice(markerIndex, 0, patternLine);
+  } else {
+    if (lines.length > 0 && lines[lines.length - 1] !== "") {
+      lines.push("");
+    }
+    lines.push(patternLine);
+  }
+  while (lines.length > 1 && lines[lines.length - 1] === "" && lines[lines.length - 2] === "") {
+    lines.pop();
+  }
+  await writeFile(GITATTRIBUTES_FILE, `${lines.join("\n")}
+`, "utf8");
+  return true;
 }
 function isMetaCtfTag(tag) {
   switch (tag.toLowerCase()) {
@@ -1869,6 +1903,7 @@ async function runAddComp(options = {}) {
     const writeSpinner = Y2();
     writeSpinner.start("Creating event scaffold...");
     await mkdir(eventDir, { recursive: true });
+    const trackedInLfs = await ensureEventDirectoryUsesLfs(event.title);
     await writeFile(
       path.join(eventDir, "README.md"),
       buildEventReadme(event, { usesCtfd: plan.usesCtfd }),
@@ -1879,6 +1914,9 @@ async function runAddComp(options = {}) {
       import_picocolors3.default.cyan(relativeDisplay(eventDir)),
       "  README.md"
     ];
+    if (trackedInLfs) {
+      resultLines.push(`  ${import_picocolors3.default.dim("lfs:")} added ${path.basename(GITATTRIBUTES_FILE)} rule`);
+    }
     if (plan.mode === "manual") {
       const result = await createManualCategories(eventDir, plan.categories);
       resultLines.push(`  ${import_picocolors3.default.dim("categories:")} ${countLabel(result.createdCategories, "folder")}`);
