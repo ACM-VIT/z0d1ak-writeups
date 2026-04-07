@@ -1,29 +1,35 @@
-ApoorvCTF[[:space:]]2026/** filter=lfs diff=lfs merge=lfs -text
-BSidesSF[[:space:]]CTF[[:space:]]2026/** filter=lfs diff=lfs merge=lfs -text
-EHAX[[:space:]]CTF[[:space:]]2026/** filter=lfs diff=lfs merge=lfs -text
-HACKZERO[[:space:]]'26[[:space:]]CTF/** filter=lfs diff=lfs merge=lfs -text
-PsychCTF[[:space:]]2026/** filter=lfs diff=lfs merge=lfs -text
-SUCTF[[:space:]]2026/** filter=lfs diff=lfs merge=lfs -text
-TAMUctf[[:space:]]2026/** filter=lfs diff=lfs merge=lfs -text
-UTCTF[[:space:]]2026/** filter=lfs diff=lfs merge=lfs -text
-Undutmaning[[:space:]]2026/** filter=lfs diff=lfs merge=lfs -text
-*.md !text -filter -merge -diff
-*.txt !text -filter -merge -diff
-*.py !text -filter -merge -diff
-*.c !text -filter -merge -diff
-*.h !text -filter -merge -diff
-*.mjs !text -filter -merge -diff
-*.js !text -filter -merge -diff
-*.json !text -filter -merge -diff
-*.sh !text -filter -merge -diff
-*.html !text -filter -merge -diff
-*.glsl !text -filter -merge -diff
-*.sol !text -filter -merge -diff
-*.rb !text -filter -merge -diff
-*.yaml !text -filter -merge -diff
-*.yml !text -filter -merge -diff
-*.svg !text -filter -merge -diff
-*.sql !text -filter -merge -diff
-*.bf !text -filter -merge -diff
-*.list !text -filter -merge -diff
-*.ts !text -filter -merge -diff
+# Challenge asset trees default to Git LFS.
+"ApoorvCTF 2026/**" filter=lfs diff=lfs merge=lfs -text
+"BSidesSF CTF 2026/**" filter=lfs diff=lfs merge=lfs -text
+"EHAX CTF 2026/**" filter=lfs diff=lfs merge=lfs -text
+"HACKZERO '26 CTF/**" filter=lfs diff=lfs merge=lfs -text
+"PsychCTF 2026/**" filter=lfs diff=lfs merge=lfs -text
+"SUCTF 2026/**" filter=lfs diff=lfs merge=lfs -text
+"TAMUctf 2026/**" filter=lfs diff=lfs merge=lfs -text
+"UTCTF 2026/**" filter=lfs diff=lfs merge=lfs -text
+"Undutmaning 2026/**" filter=lfs diff=lfs merge=lfs -text
+
+# Keep prose and source files in normal Git.
+*.md -filter -diff -merge text
+*.txt -filter -diff -merge text
+*.py -filter -diff -merge text
+*.c -filter -diff -merge text
+*.h -filter -diff -merge text
+*.mjs -filter -diff -merge text
+*.js -filter -diff -merge text
+*.json -filter -diff -merge text
+*.sh -filter -diff -merge text
+*.html -filter -diff -merge text
+*.glsl -filter -diff -merge text
+*.sol -filter -diff -merge text
+*.rb -filter -diff -merge text
+*.yaml -filter -diff -merge text
+*.yml -filter -diff -merge text
+*.svg -filter -diff -merge text
+*.sql -filter -diff -merge text
+*.bf -filter -diff -merge text
+*.list -filter -diff -merge text
+*.ts -filter -diff -merge text
+
+.hooks/** -filter -diff -merge text
+scripts/** -filter -diff -merge text
