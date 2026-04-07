@@ -10,26 +10,26 @@
 "Undutmaning 2026/**" filter=lfs diff=lfs merge=lfs -text
 
 # Keep prose and source files in normal Git.
-*.md -filter -diff -merge text
-*.txt -filter -diff -merge text
-*.py -filter -diff -merge text
-*.c -filter -diff -merge text
-*.h -filter -diff -merge text
-*.mjs -filter -diff -merge text
-*.js -filter -diff -merge text
-*.json -filter -diff -merge text
-*.sh -filter -diff -merge text
-*.html -filter -diff -merge text
-*.glsl -filter -diff -merge text
-*.sol -filter -diff -merge text
-*.rb -filter -diff -merge text
-*.yaml -filter -diff -merge text
-*.yml -filter -diff -merge text
-*.svg -filter -diff -merge text
-*.sql -filter -diff -merge text
-*.bf -filter -diff -merge text
-*.list -filter -diff -merge text
-*.ts -filter -diff -merge text
+*.md !filter !diff !merge
+*.txt !filter !diff !merge
+*.py !filter !diff !merge
+*.c !filter !diff !merge
+*.h !filter !diff !merge
+*.mjs !filter !diff !merge
+*.js !filter !diff !merge
+*.json !filter !diff !merge
+*.sh !filter !diff !merge
+*.html !filter !diff !merge
+*.glsl !filter !diff !merge
+*.sol !filter !diff !merge
+*.rb !filter !diff !merge
+*.yaml !filter !diff !merge
+*.yml !filter !diff !merge
+*.svg !filter !diff !merge
+*.sql !filter !diff !merge
+*.bf !filter !diff !merge
+*.list !filter !diff !merge
+*.ts !filter !diff !merge
 
-.hooks/** -filter -diff -merge text
-scripts/** -filter -diff -merge text
+.hooks/** !filter !diff !merge
+scripts/** !filter !diff !merge
